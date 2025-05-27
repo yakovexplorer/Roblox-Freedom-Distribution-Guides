@@ -18,6 +18,8 @@ And I'm not done yet...
 
 ## DataModelPatch Bytecode Analysis
 
+This is a super rough draft. Things do not make full sense now and _will_ be refined as we develop further.
+
 ### Preparation
 
 1. Download [`DataModelPatch.rbxm`](DataModelPatch.rbxm). For Rōblox v463, `DataModelPatch.rbxm` can be pulled from:
@@ -160,3 +162,67 @@ public static bool PullInstanceData(Instance inst, ref string value, ref string 
 The `Source` values are very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very very likely to be bytecode.
 
 **To be continued...**
+
+---
+
+In a script named `NotifyReady.lua` (there are like three copies in DataModelPatch),
+
+There is content:
+
+```lua
+return {}
+```
+
+Bytecode:
+
+```
+A0 7B E7 85 B1 CC 49 58 12 C5 C2 01 FE 33 84 A1 82 78 34 44 27 5D D9 E8 CB 04 DE 8C 6E A4 DE 30 90 48 C7 D5 AE EC 69 78 5A 90 0E 1C D7 B6 E4 02 92 D8 70
+```
+
+In the CoreScripts, `CompleteRequest.lua` has the exact same content as `PurchaseCompleteRecieved.lua` and `RequestPremiumPurchase.lua` and `StartHidingPrompt.lua`.
+
+Bytecode is:
+
+```
+71 DF 06 74 6E 30 E8 E9 43 61 A3 70 2F D1 DD 32 B3 2E 9C CF 48 50 41 71 4B BE 0B 51 D2 6B FF 7C 6A DF 61 4B C2 28 7F 82 57 75 80 54 69 70 62 AC 3C 81 1B F4 88 FF 96 21 44 2D 0E 6E DE 1A 47 13 84 D4 AB 0C FB 6D 38 56 57 1F 4D 1A B3 F2 E0 A9 C3 DD 2B 66 F5 FE 57 50 BC 88 AB B7 CB 2A 05 B4 D1 8F 1E 21 6F EA D2 7A 1B 30 6F 7B 79 31 A2 D2 C1 68 FB 0F 3B 64 2F B0 77 B0 E9 08 FE 6E 20 0B E0 EC 0E CE 4A 4D EC 51 D0 57 8A CE DF 9F
+```
+
+```lua
+local makeActionCreator = require(script.Parent.makeActionCreator)
+
+return makeActionCreator(script.Name)
+```
+
+Let's compare `ProductInfoReceived.lua`:
+
+```lua
+local makeActionCreator = require(script.Parent.makeActionCreator)
+
+return makeActionCreator(script.Name, "productInfo")
+```
+
+```
+4E D9 17 D6 7C 2E F9 8B 4C 67 B2 D2 28 CA 3C D7 AC 88 AC 68 74 3E 48 52 F4 AD 19 94 A5 C9 08 FF 70 45 11 B4 F0 5D 54 59 66 28 BD 4E 8B 7E 7C 46 DE BA 53 DA A2 90 97 C2 0A 7D AA 05 28 F9 A5 D2 FA 60 F9 0E B3 64 07 C8 72 B6 83 7B B6 DB 61 C0 5D 8C F1 18 AC A8 FF 64 77 4A 07 67 1B E9 4B 92 83 93 40 4C 34 7C 00 29 8C 86 75 41 6C 57 8A 3E 12 9E 5D BB D1 6A 86 6E 45 BE 2F 8C 80 74 36 D2 FE FE 03 52 1A 3A E7 7E E4 88 C6 C8 12 4A 9C 09 2A 9F 65 DC 89 FE DC AC 6E 18 B9 7D 70 01 F0 41
+```
+
+With `PremiumInfoRecieved.lua`:
+
+```lua
+local makeActionCreator = require(script.Parent.makeActionCreator)
+
+return makeActionCreator(script.Name, "premiumInfo")
+```
+
+```
+0D BE 18 97 BF 91 FE 4A 8F 80 8D 13 6B 65 2B 96 EF EF 23 28 B0 51 4F 57 37 39 0D B2 D0 E9 F4 5B 19 DE 32 E2 65 3B 2B F8 17 9F 36 23 6C F9 76 35 78 EB 39 44 91 1F 54 E4 A8 4E E8 3E 34 DF 2F F7 24 66 B7 15 45 8F 19 25 AD 5A F9 51 9D E9 5C 82 45 54 7D 6A 99 FA B1 07 21 30 FE 5F C4 34 8E 1D C2 B7 BB 0E 99 BA BD 49 56 55 EA 0F 8C 18 27 71 22 6C 2E 0A 3E 48 2A 29 48 51 82 D0 E9 29 56 BC 91 5B DC BD 53 82 F0 4E 1E 4C 80 E6 58 52 15 17 6F D6 33 76 C6 96 14 A0 A3 07 DA 79 FA 4B
+```
+
+I think that the code is encrypted.
+
+If it wasn't, any strings would be plainly visible in the bytecode.
+
+---
+
+According to Orblua,
+
+> Roblox Studio and the Roblox client Luau bytecode have different opcodes
