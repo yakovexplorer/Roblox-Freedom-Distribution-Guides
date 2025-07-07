@@ -1,16 +1,21 @@
-Rōblox (v463) might sometimes crash on me. Why?
+**Rōblox (v463) might sometimes crash on me.**
 
-I've provided three client-sided minidumps to find out.
+As of 2025-07-07, there are two common address locations where Rōblox can crash randomly. The solution is as follows:
 
-**Solution: set `DFIntAnalyticsNS1CDNProbeChancePercent` to 0.**
+1. In the Player's `ClientAppSettings.json`, set `DFIntAnalyticsNS1CDNProbeChancePercent` to 0, and
+2. Apply the patches from [`./v463-client.1337`](./v463-client.1337).
 
----
+## Why?
 
-Using [MinidumpExplorer](https://github.com/GregTheDev/MinidumpExplorer/releases/tag/v0.8):
+I've provided some client-sided minidumps to find out.
+
+### For Solution (1)
+
+Using [MinidumpExplorer](https://github.com/GregTheDev/MinidumpExplorer/releases/tag/v0.8) on [`./log_B340B 0, 463, 0, 417004.Client.dmp`](./log_B340B 0, 463, 0, 417004.Client.dmp):
 
 ![alt text](image.png)
 
-They basically point to a `0xC0000094: Integer division by zero` error at address `06509D7`
+They basically point to a `0xC0000094` (integer-division-by-zero) error at address `06509D7`.
 
 ```
 006509D7 | F7F6                     | div     esi
@@ -62,3 +67,13 @@ This statement is preceded by a comparison to a value at a constant address `269
 By default, `DFIntAnalyticsNS1CDNProbeChancePercent` is set to `5`. I guess there is a 5% chance that we crash each time we do something. Unreliable!
 
 We should set that to `0` so that this specific divide-by-zero error never happens.
+
+### For Solution (2)
+
+Using [MinidumpExplorer](https://github.com/GregTheDev/MinidumpExplorer/releases/tag/v0.8) on [`./log_5C388 0, 463, 0, 417004.Client.dmp`](./log_5C388 0, 463, 0, 417004.Client.dmp):
+
+![alt text](image-1.png)
+
+They basically point to a `0xC0000005` (access-violation) error at address `00EB6C88`.
+
+The changes in [`./v463-client.1337`](./v463-client.1337) skip the function call in which `00EB6C88` resides (more information can be provided upon request).
