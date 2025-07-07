@@ -11,7 +11,7 @@ I've provided some client-sided minidumps to find out.
 
 ### For Solution (1)
 
-Using [MinidumpExplorer](https://github.com/GregTheDev/MinidumpExplorer/releases/tag/v0.8) on [`./log_B340B 0, 463, 0, 417004.Client.dmp`](./log_B340B 0, 463, 0, 417004.Client.dmp):
+Using [MinidumpExplorer](https://github.com/GregTheDev/MinidumpExplorer/releases/tag/v0.8) on [`./log_B340B_0,_463,_0, 417004.Client.dmp`](./log_B340B_0,_463,_0,_417004.Client.dmp):
 
 ![alt text](image.png)
 
@@ -70,7 +70,7 @@ We should set that to `0` so that this specific divide-by-zero error never happe
 
 ### For Solution (2)
 
-Using [MinidumpExplorer](https://github.com/GregTheDev/MinidumpExplorer/releases/tag/v0.8) on [`./log_5C388 0, 463, 0, 417004.Client.dmp`](./log_5C388 0, 463, 0, 417004.Client.dmp):
+Using [MinidumpExplorer](https://github.com/GregTheDev/MinidumpExplorer/releases/tag/v0.8) on [`./log_5C388_0,_463,_0, 417004.Client.dmp`](./log_5C388_0,_463,_0,_417004.Client.dmp):
 
 ![alt text](image-1.png)
 
