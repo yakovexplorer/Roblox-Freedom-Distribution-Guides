@@ -33,29 +33,33 @@ cmovne  eax, ecx
    - To do this, navigate to the address `15047C0` and replace the first line with `jmp 1504A20`.
    - This works because both methods contain the same signature.
 
-## Quick Guide for Client
+## Quick Guide for Client and Studio
+
+### Part 1
 
 1. Launch x32dbg.
 
 2. Search for string references to `"CURLOPT_OPENSOCKETFUNCTION"`.
 
-   - You'll find _one_ result.
+   - You'll find _one_ result in the client or _two_ in Studio. Select the first one.
 
-3. Go up about 10 lines and change the first `je` statement into a `jmp`.
+3. Go up about 10 lines and find a statement like `mov edx, 0x4EC3`
 
----
+4. Shortly before the aforementioned `mov`, change the `je` statement into a `jmp`.
+
+### Part 2
 
 1. Search for user-module references to `"about:blank"`.
 
-   - There will be one result.
-   - In my case, it is at `014D12B3`.
+   - There will always be one result.
+   - In client v463, it is at `014D12B3`.
 
 2. Go up about 6 statements to the most recent `call` routine _and follow its address_:
 
-   - In my case, it is at `014CED40`.
+   - In client v463, it is at `014CED40`.
 
 ```
-014D129C | E8 9FDAFFFF              | call    robloxplayerbeta.014CED40                                |
+014D129C | E8 9FDAFFFF              | call    robloxplayerbeta.014CED40                                | {FUNCTION TO TARGET}
 014D12A1 | 83C4 08                  | add     esp, 0x8                                                 |
 014D12A4 | 84C0                     | test    al, al                                                   |
 014D12A6 | 0F84 A9010000            | je      robloxplayerbeta.14D1455                                 |
@@ -72,15 +76,15 @@ cmovne  eax, ecx
 + 014CED40 | B0 01                    | mov     al, 0x1                                                  |
 + 014CED42 | C3                       | ret                                                              |
 014CED43 | 807D 0C 00               | cmp     byte ptr ss:[ebp + 0xC], 0x0                             |
+```
 
----
+### Part 3
 
 1. Search for user-module references to `"HttpRequest.Url is not trusted"`.
    - There will be one result.
-   - In my case, it is at `00C59440`.
+   - In client v463, it is at `00C59440`.
 
 ```
-
 00C59436 | 68 943EFD01 | push robloxplayerbeta.1FD3E94 | 1FD3E94:"Unrecognized request option %s"
 00C5943B | E8 B0228C00 | call robloxplayerbeta.151B6F0 |
 00C59440 | 68 B43EFD01 | push robloxplayerbeta.1FD3EB4 | 1FD3EB4:"HttpRequest.Url is not trusted"
@@ -103,10 +107,9 @@ cmovne  eax, ecx
 00C59495 | E8 56228C00 | call robloxplayerbeta.151B6F0 |
 00C5949A | 68 C8FAEA01 | push robloxplayerbeta.1EAFAC8 | 1EAFAC8:"Variant cast failed"
 00C5949F | E8 4C228C00 | call robloxplayerbeta.151B6F0 |
+```
 
-````
-
-2. Find references to the address of the `push` statement (in my case, `00C59440`).
+2. Find references to the address of the `push` statement (in client v463, `00C59440`).
 
    - There will also be one result (`je 00C59440` at `00C58E43`).
 
@@ -123,11 +126,11 @@ cmovne  eax, ecx
 + 00C58E48 | 90                       | nop                                                              |
 00C58E49 | 8B7D 0C                  | mov     edi, dword ptr ss:[ebp + 0xC]                            |
 00C58E4C | 8D4D C4                  | lea     ecx, dword ptr ss:[ebp - 0x3C]                           |
-````
+```
 
 ## How We Got Here
 
-This tok me over a month to complete.
+This took me over a month to complete.
 
 ### Early CoreScript Analysis
 
@@ -570,9 +573,9 @@ This looks roughly equivalent (in the v463 Client) to:
 014D1286 | E8 8550AFFF              | call    robloxplayerbeta.FC6310                                  |
 014D128B | 84C0                     | test    al, al                                                   |
 014D128D | 0F84 BE010000            | je      robloxplayerbeta.14D1451                                 |
-014D1293 | 8D85 78FFFFFF            | lea     eax, dword ptr ss:[ebp - 0x88]                           | eax:AmdPowerXpressRequestHighPerformance+26A80
+014D1293 | 8D85 78FFFFFF            | lea     eax, dword ptr ss:[ebp - 0x88]                           |
 014D1299 | 6A 00                    | push    0x0                                                      |
-014D129B | 50                       | push    eax                                                      | eax:AmdPowerXpressRequestHighPerformance+26A80
+014D129B | 50                       | push    eax                                                      |
 014D129C | E8 9FDAFFFF              | call    robloxplayerbeta.014CED40                                |
 014D12A1 | 83C4 08                  | add     esp, 0x8                                                 |
 014D12A4 | 84C0                     | test    al, al                                                   |
@@ -580,9 +583,9 @@ This looks roughly equivalent (in the v463 Client) to:
 014D12AC | 32DB                     | xor     bl, bl                                                   |
 014D12AE | E9 A4010000              | jmp     robloxplayerbeta.14D1457                                 |
 014D12B3 | B9 387B1A02              | mov     ecx, robloxplayerbeta.21A7B38                            | 21A7B38:"about:blank"
-014D12B8 | 8BC6                     | mov     eax, esi                                                 | eax:AmdPowerXpressRequestHighPerformance+26A80
+014D12B8 | 8BC6                     | mov     eax, esi                                                 |
 014D12BA | 66:0F1F4400 00           | nop     word ptr ds:[eax + eax], ax                              |
-014D12C0 | 8A10                     | mov     dl, byte ptr ds:[eax]                                    | eax:AmdPowerXpressRequestHighPerformance+26A80
+014D12C0 | 8A10                     | mov     dl, byte ptr ds:[eax]                                    |
 014D12C2 | 3A11                     | cmp     dl, byte ptr ds:[ecx]                                    |
 014D12C4 | 75 1A                    | jne     robloxplayerbeta.14D12E0                                 |
 ```
