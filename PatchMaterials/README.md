@@ -1,6 +1,10 @@
 All `rbxasset://textures/` material things get redirected to `rbxassetid://rbxmtl-` when you apply these patches.
 
-Do this replacement on the following user-referenced strings (no substrings):
+**If you're using a version of Rōblox that obfuscates strings in the** `**exe**` **until they're loaded (such as v463), refer** [**here**](../AddStrings2021E/README.md)**.**
+
+---
+
+Modify the following user-referenced strings (no substrings):
 
 - `"rbxasset://textures/plastic/studs.dds"`
 - `"rbxasset://textures/plastic/diffuse.dds"`
@@ -8,7 +12,17 @@ Do this replacement on the following user-referenced strings (no substrings):
 - `"rbxasset://textures/plastic/normaldetail"`
 - `"rbxasset://textures/"`
 
+All _single_ slashes, _including_ at the end of the string, are to be replaced with `-`. For example, `"rbxasset://textures/plastic/studs.dds"` gets altered to `"rbxassetid://rbxmtl-plastic-studs.dds"`.
+
+---
+
 For material paths such as `rbxasset://textures/woodplanks/diffuse.dds`, we'll also need to replace some instances of `/` with `-`.
+
+1. Find a string which terminates with `"-"`. One good place to look is in the string which we modified previously: `rbxassetid://rbxmtl-`. Take the address of the _final_ character of that string (the dash). In v348, this address is `01539923`.
+
+2. Search user-string results for `"diffuse"`. There will be multiple multiple results.
+   - For each result, keep navigating up until you find a `push` instruction. If the opcode is not equal to `68`, you can safely ignore.
+   - Replace the address in that instruction with the one you collected from step (1). In v348, you replace `push 01129658` with `push 01539923`.
 
 For example, in v348:
 
@@ -52,8 +66,12 @@ And v463:
 019DC63E | 68 E46B2B02              | push    robloxplayerbeta.22B6BE4        | 22B6BE4:"diffuse"
 ```
 
-Notice how the relevant `push` command is situated some instructions prior to where `diffuse` is put in. Because this slash only one character, it will not appear as a string on x64dbg, but rather with a blank annotation. Replace the slash with a dash.
+Notice how the relevant `push` command is situated some instructions prior to where `diffuse` is put in. Because this slash is only one character, it will not appear annotated as a string on x64dbg. Replace the slash with a dash.
 
-This snippet of code appends `rbxasset://textures/woodplanks` (from earlier in the routine), **`/`** (per `0105980B`), and `diffuse` (per `0105987C`).
+This snippet of code appends `rbxasset://textures/woodplanks` (from earlier in the routine), `**/**` (per `0105980B`), and `diffuse` (per `0105987C`).
 
-If you're using a version of Rōblox that obfuscates strings in the `exe` until they're loaded, refer [here](../AddStrings2021E/README.md).
+---
+
+[`MaterialPacks.json`](./MaterialPacks.json) consists of data manually extracted from the default values for `FStringPartTexturePacksJson2022` and `FStringPartTexturePacksJsonPre2022`. They include Rōblox numeric asset idens which, when loaded, have additional material info.
+
+[`MaterialPacks2.json`](./MaterialPacks2.json) is a generated file processed by [`_.py`](./_.py) using [`MaterialPacks.json`](./MaterialPacks.json). It includes additional asset idens for each subtexture, including for diffuse and normal maps.
