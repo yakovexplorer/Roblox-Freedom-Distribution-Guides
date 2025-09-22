@@ -2,146 +2,108 @@
 
 ## Background
 
-I found a version of Studio from late 2021 ([v493.1.15175](https://archive.org/details/roblox-version-1fca050e38094184)) with a login patch applied in x86. There was a change from `jnz` to `jz` at file address `0x002B951C`. This patch was location near a unique string reference to `"Studio.App.AutoSaveDialog.OpenRobloxFile"`. This fix, however, can't be reproduced in my target versions of v348 and v463.
+I found a version of Studio from late 2021 ([v493.1.15175](https://archive.org/details/roblox-version-1fca050e38094184)) with a patch applied in x86 such that no login screen would be required. There was a change from `jnz` to `jz` at file address `0x002B951C`. This patch was location near a unique string reference to `"Studio.App.AutoSaveDialog.OpenRobloxFile"`. The specific fix that Reggie applied, however, can't be reproduced in my target versions of v348 and v463. However, a very similar one has been confirmed to work in v463.
 
-## Preliminary Findings
+## Discovery
 
-When a login routine is successful, you expect some log message to show up (at least conditionally).
+When you launch v463 Studio without command-line arguments, you are presented with a login screen.
 
-Let's try `"[FLog::LoginManager] LoginManager::loginSuccess"`.
+![alt text](image.png)
 
-Using x64dbg on v463 of Studio, we get one user-module reference at `00000001403AF84B`.
+You may be tempted to try bypassing this through several methods:
 
-```
-00000001403AF82D | CC                       | int3                                                    |
-00000001403AF82E | CC                       | int3                                                    |
-00000001403AF82F | CC                       | int3                                                    |
-00000001403AF830 | 48:83EC 78               | sub     rsp, 0x78                                       |
-00000001403AF834 | 48:C74424 20 FEFFFFFF    | mov     qword ptr ss:[rsp + 0x20], 0xFFFFFFFFFFFFFFFE   |
-00000001403AF83D | 0FB60D 34E6F002          | movzx   ecx, byte ptr ds:[0x1432BDE78]                  |
-00000001403AF844 | 84C9                     | test    cl, cl                                          |
-00000001403AF846 | 74 0F                    | je      robloxstudiobeta.1403AF857                      |
-00000001403AF848 | 45:33C0                  | xor     r8d, r8d                                        |
-00000001403AF84B | 48:8D15 AE560E02         | lea     rdx, qword ptr ds:[0x142494F00]                 | 0000000142494F00:"[FLog::LoginManager] LoginManager::loginSuccess"
-00000001403AF852 | E8 891F7E01              | call    robloxstudiobeta.141B917E0                      |
-00000001403AF857 | 66:0F6F05 D1C6D301       | movdqa  xmm0, xmmword ptr ds:[0x1420EBF30]              |
-```
+1. **Ctrl + O:** a similar message shows up: `"You must log in to open files."`
 
-Go to the top of the function call at `00000001403AF830`. Then search for xrefs. I found one at `00000001403B435E`.
+2. **Dragging to Topbar:** in 2021, the login screen could be bypassed by dragging the desired file from File Explorer to the top of the Studio window. This option does not work in current-day (late 2025) versions of Studio.
 
-```
-00000001403B433E | CC                       | int3
-00000001403B433F | CC                       | int3
-00000001403B4340 | 4C:8BC2                  | mov     r8, rdx
-00000001403B4343 | 85C9                     | test    ecx, ecx
-00000001403B4345 | 74 1C                    | je      robloxstudiobeta.1403B4363
-00000001403B4347 | 83E9 01                  | sub     ecx, 0x1
-00000001403B434A | 74 0E                    | je      robloxstudiobeta.1403B435A
-00000001403B434C | 83F9 01                  | cmp     ecx, 0x1
-00000001403B434F | 75 24                    | jne     robloxstudiobeta.1403B4375
-00000001403B4351 | 48:8B4424 28             | mov     rax, qword ptr ss:[rsp + 0x28]
-00000001403B4356 | C600 00                  | mov     byte ptr ds:[rax], 0x0
-00000001403B4359 | C3                       | ret
-00000001403B435A | 48:8D4A 10               | lea     rcx, qword ptr ds:[rdx + 0x10]
-00000001403B435E | E9 CDB4FFFF              | jmp     robloxstudiobeta.1403AF830
-00000001403B4363 | 4D:85C0                  | test    r8, r8
-00000001403B4366 | 74 0D                    | je      robloxstudiobeta.1403B4375
-00000001403B4368 | BA 18000000              | mov     edx, 0x18
-00000001403B436D | 49:8BC8                  | mov     rcx, r8
-00000001403B4370 | E9 6BA17D01              | jmp     <robloxstudiobeta.rbxDeallocate>
-00000001403B4375 | C3                       | ret
-00000001403B4376 | CC                       | int3
-```
+3. **Ctrl + N:** Rōblox has this action accounted for. An error string `"You must log in to create new files."` shows up. Let's investigate this option further with x64dbg.
 
-Go to the top of the function call at `00000001403B4340`. Then search for xrefs. I found one at `00000001403B4E06`.
+---
+
+![alt text](image-1.png)
+
+In the `RobloxStudioBeta.exe` v463 executable, there are no results for the string `"You must log in to create new files."`
+
+However, you will find that string in the Rōblox Client Tracker data at [`./QtResources/Translation/StudioStringsUntranslated.csv`](https://github.com/MaximumADHD/Roblox-Client-Tracker/blob/f867742be117235b24b2be7500eada1d20ba42f3/QtResources/Translation/StudioStringsUntranslated.csv#L789). The translation-agnostic key is **`"Studio.App.MainWindow.LogInToCreateNewFiles"`**. The CSV data was compressed as a Qt resource. The Client Tracker used the [qtextract](https://github.com/axstin/qtextract.git) tool to extract the CSV data.
+
+I search for string references in user modules in `RobloxStudioBeta.exe` v463 executable (using x64dbg) for `"Studio.App.MainWindow.LogInToCreateNewFiles"`. One result shows up at address `000000014026CD15`.
+
+I add a breakpoint right there at `000000014026CD15`. I make sure that Studio is at the starting login screen and hit Ctrl + N again. The breakpoint is hit.
+
+I step over the execution trace and notice that the message box shows up during a call to `robloxstudiobeta.140266D90`. This call is the first instruction after the breakpoint to use opcode `E8` and is located at `000000014026CD59`: some 12 instructions after the breakpoint.
+
+The routine we're calling begins at `0000000140266D90` and ends at `0000000140266FA1`. Judging by the `mov al, 0x1` near the end, we can infer that it returns a boolean.
+
+---
 
 ```
-00000001403B4DF2 | E8 A9967D01              | call    robloxstudiobeta.141B8E4A0
-00000001403B4DF7 | 48:8945 F0               | mov     qword ptr ss:[rbp - 0x10], rax
-00000001403B4DFB | 48:85C0                  | test    rax, rax
-00000001403B4DFE | 74 13                    | je      robloxstudiobeta.1403B4E13
-00000001403B4E00 | C700 01000000            | mov     dword ptr ds:[rax], 0x1
-00000001403B4E06 | 48:8D0D 33F5FFFF         | lea     rcx, qword ptr ds:[0x1403B4340]
-00000001403B4E0D | 48:8948 08               | mov     qword ptr ds:[rax + 0x8], rcx
-00000001403B4E11 | EB 03                    | jmp     robloxstudiobeta.1403B4E16
-00000001403B4E13 | 49:8BC7                  | mov     rax, r15
-00000001403B4E16 | 48:895C24 40             | mov     qword ptr ss:[rsp + 0x40], rbx
-00000001403B4E1B | 4C:897C24 38             | mov     qword ptr ss:[rsp + 0x38], r15                                           [rsp+38]:public: static void __cdecl QMetaObject::activate(class QObject *, int, int, void **)+4C6
-00000001403B4E20 | C74424 30 01000000       | mov     dword ptr ss:[rsp + 0x30], 0x1
-00000001403B4E28 | 48:894424 28             | mov     qword ptr ss:[rsp + 0x28], rax
-00000001403B4E2D | 4C:897C24 20             | mov     qword ptr ss:[rsp + 0x20], r15
-00000001403B4E32 | 4C:8BCE                  | mov     r9, rsi
-00000001403B4E35 | 4C:8D45 50               | lea     r8, qword ptr ss:[rbp + 0x50]
-00000001403B4E39 | 48:8BD6                  | mov     rdx, rsi
-00000001403B4E3C | 48:8D4D 58               | lea     rcx, qword ptr ss:[rbp + 0x58]
-00000001403B4E40 | FF15 8A19D101            | call    qword ptr ds:[<private: static class QMetaObject::Connection __cdecl QObject::connectImpl(class QObj...
+0000000140266DBF | 4C:8B00                  | mov     r8, qword ptr ds:[rax]          |
+0000000140266DC2 | 48:8BC8                  | mov     rcx, rax                        |
+0000000140266DC5 | 41:FF90 80000000         | call    qword ptr ds:[r8 + 0x80]        | {C}
+0000000140266DCC | 803D 6512E802 00         | cmp     byte ptr ds:[0x1430E8038], 0x0  |
+0000000140266DD3 | 0F84 02010000            | je      robloxstudiobeta.140266EDB      | {B1}
+0000000140266DD9 | 84C0                     | test    al, al                          |
+...
+0000000140266ED4 | E8 07769201              | call    <robloxstudiobeta.rbxDeallocate |
+0000000140266ED9 | EB 08                    | jmp     robloxstudiobeta.140266EE3      |
+0000000140266EDB | 84C0                     | test    al, al                          | {B2}
+0000000140266EDD | 0F85 AC000000            | jne     robloxstudiobeta.140266F8F      | {A1}
+0000000140266EE3 | 0FB60D DEEDEC02          | movzx   ecx, byte ptr ds:[0x143135CC8]  |
+0000000140266EEA | 84C9                     | test    cl, cl                          |
+0000000140266EEC | 74 0F                    | je      robloxstudiobeta.140266EFD      |
+0000000140266EEE | 4C:8BC3                  | mov     r8, rbx                         |
+0000000140266EF1 | 48:8D15 60461F02         | lea     rdx, qword ptr ds:[0x14245B558] | 000000014245B558:"[FLog::Always] %s"
+0000000140266EF8 | E8 E3AB9201              | call    robloxstudiobeta.141B91AE0      |
+0000000140266EFD | 48:8BD3                  | mov     rdx, rbx                        |
+0000000140266F00 | 48:8D8C24 A8000000       | lea     rcx, qword ptr ss:[rsp + 0xA8]  |
+0000000140266F08 | FF15 CAF3E501            | call    qword ptr ds:[<public: __cdecl  |
+0000000140266F0E | 90                       | nop                                     |
+0000000140266F0F | C74424 20 FFFFFFFF       | mov     dword ptr ss:[rsp + 0x20], 0xFF |
+0000000140266F17 | 45:33C9                  | xor     r9d, r9d                        |
+0000000140266F1A | 4C:8D05 0F211E02         | lea     r8, qword ptr ds:[0x142449030]  | 0000000142449030:"Studio.App.MainWindow.RobloxStudio"
+0000000140266F21 | 48:8D9424 A0000000       | lea     rdx, qword ptr ss:[rsp + 0xA0]  |
+0000000140266F29 | 48:8D0D 685F2102         | lea     rcx, qword ptr ds:[0x14247CE98] |
+0000000140266F30 | FF15 AAF9E501            | call    qword ptr ds:[<public: class QS |
+0000000140266F36 | 90                       | nop                                     |
+0000000140266F37 | C74424 20 00000000       | mov     dword ptr ss:[rsp + 0x20], 0x0  |
+0000000140266F3F | 41:B9 00040000           | mov     r9d, 0x400                      |
+0000000140266F45 | 4C:8D8424 A8000000       | lea     r8, qword ptr ss:[rsp + 0xA8]   |
+0000000140266F4D | 48:8D9424 A0000000       | lea     rdx, qword ptr ss:[rsp + 0xA0]  |
+0000000140266F55 | 48:8BCF                  | mov     rcx, rdi                        |
+0000000140266F58 | FF15 526BE601            | call    qword ptr ds:[<public: static e |
+0000000140266F5E | 90                       | nop                                     |
+0000000140266F5F | 48:8D8C24 A0000000       | lea     rcx, qword ptr ss:[rsp + 0xA0]  |
+0000000140266F67 | FF15 C3F3E501            | call    qword ptr ds:[<public: __cdecl  |
+0000000140266F6D | 90                       | nop                                     |
+0000000140266F6E | 48:8D8C24 A8000000       | lea     rcx, qword ptr ss:[rsp + 0xA8]  |
+0000000140266F76 | FF15 B4F3E501            | call    qword ptr ds:[<public: __cdecl  |
+0000000140266F7C | 32C0                     | xor     al, al                          |
+0000000140266F7E | 48:8B9C24 90000000       | mov     rbx, qword ptr ss:[rsp + 0x90]  | [rsp+90]:RtlUserThreadStart+28
+0000000140266F86 | 48:81C4 80000000         | add     rsp, 0x80                       |
+0000000140266F8D | 5F                       | pop     rdi                             |
+0000000140266F8E | C3                       | ret                                     |
+0000000140266F8F | B0 01                    | mov     al, 0x1                         | {A2}
+0000000140266F91 | 48:8B9C24 90000000       | mov     rbx, qword ptr ss:[rsp + 0x90]  | [rsp+90]:RtlUserThreadStart+28
+0000000140266F99 | 48:81C4 80000000         | add     rsp, 0x80                       |
+0000000140266FA0 | 5F                       | pop     rdi                             |
+0000000140266FA1 | C3                       | ret                                     |
 ```
 
-Note the call to `QObject::connectImpl` at address `00000001403B4E40`.
+To reach the branch where `1` is returned, we need to ensure that `al` is also `1` when the EIP is at `0000000140266EDB`. This is evident by how the statement I notated as `{A1}` can jump directly to `{A2}`. We know that this is the only way to reach this branch because:
 
-## What Else?
+1. An unconditional `jmp` instruction is placed in the statement prior to `{B2}`.
+2. The statement prior to `{A2}` is a `ret` instruction, effectively serving as a jump.
 
-Let's check potential log messages. It would make sense that we search for `Login` or the like. Let's search for user references to `FLog::LoginManager`:
+Owing to the `jmp` statement per (1), we know that `al` comes from some other place, that being before `{B1}`, which is a jump for an unrelated condition. The `al` originates from the result of a function call at `{C}`.
 
+To determine the exact address of this call, we need to add another breakpoint. We do the same test as before to get this breakpoint captured. Once hit, _step into_ that function. In v463, that destination function begins at `00000001405F2100`.
+
+We apply the following patch to ensure that the function always returns a truish vaue.
+
+```patch
+-00000001405F2100 | 0FB641 48                | movzx   eax, byte ptr ds:[rcx + 0x48]   | rcx+48:AmdPowerXpressRequestHighPerformance+1C083C
++00000001405F2100 | 0C FF                    | or      al, 0xFF                        |
++00000001405F2102 | 90                       | nop                                     |
++00000001405F2103 | 90                       | nop                                     |
+00000001405F2104 | C3                       | ret                                     |
 ```
-00000001403AD96A lea rdx,qword ptr ds:[142495230] 0000000142495230 "[FLog::LoginManager] LoginManager::logOut networkReply was NULL."
-00000001403ADC03 lea rdx,qword ptr ds:[142495480] 0000000142495480 "[FLog::LoginManager] Logged in user with hash '%s' with id with hash '%s'"
-00000001403ADD0F lea rdx,qword ptr ds:[1424954D0] 00000001424954D0 "[FLog::LoginManager] Logged in user '%s' with id '%s'"
-00000001403ADE4C lea rdx,qword ptr ds:[142494E18] 0000000142494E18 "[FLog::LoginManager] LoginManager::captchaNeeded"
-00000001403AECBB lea rdx,qword ptr ds:[142494E90] 0000000142494E90 "[FLog::LoginManager] LoginManager::onTwoStepVerificationWidgetShown"
-00000001403AF84B lea rdx,qword ptr ds:[142494F00] 0000000142494F00 "[FLog::LoginManager] LoginManager::loginSuccess"
-00000001403AFAF8 lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-00000001403AFC86 lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-00000001403AFCC8 lea rdx,qword ptr ds:[142495790] 0000000142495790 "[FLog::LoginManager] Verified two step verification code."
-00000001403B0194 lea rdx,qword ptr ds:[1424950F8] 00000001424950F8 "[FLog::LoginManager] LoginManager::fetchUserId"
-00000001403B0767 lea rdx,qword ptr ds:[1424951B8] 00000001424951B8 "[FLog::LoginManager] LoginManager::fetchUsername"
-00000001403B0DFC lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-00000001403B0EA3 lea rdx,qword ptr ds:[142495338] 0000000142495338 "[FLog::LoginManager] LoginManager successfully logged out."
-00000001403B0EE9 lea rdx,qword ptr ds:[142495338] 0000000142495338 "[FLog::LoginManager] LoginManager successfully logged out."
-00000001403B0F46 lea rdx,qword ptr ds:[142495230] 0000000142495230 "[FLog::LoginManager] LoginManager::logOut networkReply was NULL."
-00000001403B3BBE lea rdx,qword ptr ds:[142495550] 0000000142495550 "[FLog::LoginManager] Two step verification required."
-00000001403B4112 lea rdx,qword ptr ds:[142495518] 0000000142495518 "[FLog::LoginManager] Incorrect username or password."
-00000001403B546F lea rdx,qword ptr ds:[1424952D8] 00000001424952D8 "[FLog::LoginManager] LoginManager::logOut()"
-00000001403B5D3E lea rdx,qword ptr ds:[142495378] 0000000142495378 "[FLog::LoginManager] LoginManager::onAuthenticationChanged(%d)"
-00000001403B5FAB lea rdx,qword ptr ds:[142495850] 0000000142495850 "[FLog::LoginManager] LoginManager::onExternalCaptchaLinkClicked()"
-00000001403B623B lea rdx,qword ptr ds:[1424958C0] 00000001424958C0 "[FLog::LoginManager] LoginManager::onForgotPasswordClicked()"
-00000001403B636F lea rdx,qword ptr ds:[142495670] 0000000142495670 "[FLog::LoginManager] LoginManager::onInitialAuthenticationDone(%d)"
-00000001403B695A lea rdx,qword ptr ds:[142495D70] 0000000142495D70 "[FLog::LoginManager] Could not log in. Got message '%s'"
-00000001403B6A2B lea rdx,qword ptr ds:[142495920] 0000000142495920 "[FLog::LoginManager] LoginManager::onSignUpClicked()"
-00000001403B6E40 lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-00000001403B783A lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-00000001403B81E7 lea rdx,qword ptr ds:[142495800] 0000000142495800 "[FLog::LoginManager] LoginManager::twoStepVerificationStartOverClicked()"
-00000001405F2EBE lea rdx,qword ptr ds:[1424F74A8] 00000001424F74A8 "[FLog::LoginManager] Login failure reply data %s"
-00000001405F3283 lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-00000001405FD835 lea rdx,qword ptr ds:[1424F9FA0] 00000001424F9FA0 "[FLog::LoginManager] LoginRequestAuth::DEPRECATED_handleError(%p)"
-00000001405FD984 lea rdx,qword ptr ds:[1424F9FF0] 00000001424F9FF0 "[FLog::LoginManager] LoginRequestAuth::DEPRECATED_handleError() - got error from server [status code = %d] [body = %s]"
-00000001405FDBFF lea rdx,qword ptr ds:[1424F9D18] 00000001424F9D18 "[FLog::LoginManager] LoginRequestAuth::onReplyFinished(%p)"
-00000001405FE59D lea rdx,qword ptr ds:[1424F9E68] 00000001424F9E68 "[FLog::LoginManager] LoginRequestAuth::handleError(%p)"
-00000001405FE6C9 lea rdx,qword ptr ds:[1424F9EF0] 00000001424F9EF0 "[FLog::LoginManager] LoginRequestAuth::handleError() got error from server [status code = %d] [body = %s]"
-00000001405FE9DA lea rdx,qword ptr ds:[1424FA070] 00000001424FA070 "[FLog::LoginManager] LoginRequestAuth::handleTwoStepVerification"
-00000001405FEDB6 lea rdx,qword ptr ds:[1424F9D18] 00000001424F9D18 "[FLog::LoginManager] LoginRequestAuth::onReplyFinished(%p)"
-00000001405FFF3B lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-0000000140600079 lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-00000001406006DA lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-0000000140600818 lea rdx,qword ptr ds:[142495210] 0000000142495210 "[FLog::LoginManager] %s"
-00000001407C63AF lea rdx,qword ptr ds:[142569200] 0000000142569200 "[FLog::LoginManager] Could not parse login error response. The errors field is not an array."
-00000001407C6431 lea rdx,qword ptr ds:[142569260] 0000000142569260 "[FLog::LoginManager] Could not parse login error response. Could not read error code."
-00000001407C649C lea rdx,qword ptr ds:[1425692C0] 00000001425692C0 "[FLog::LoginManager] Could not parse login error response. Could not read error message."
-```
-
-I added a breakpoint to each result.
-
-These strings are constructed in a way that they print to a log file. And we know that `FLog` messages conditionally print pursuant to an FFlag. So I followed one of the results and looked for any jump-type statements prior:
-
-```
-00000001403AFCBA | 0FB60D B7E1F002          | movzx   ecx, byte ptr ds:[0x1432BDE78]                                                                       |
-00000001403AFCC1 | 84C9                     | test    cl, cl                                                                                               |
-00000001403AFCC3 | 74 0F                    | je      robloxstudiobeta.1403AFCD4                                                                           |
-00000001403AFCC5 | 45:33C0                  | xor     r8d, r8d                                                                                             |
-00000001403AFCC8 | 48:8D15 C15A0E02         | lea     rdx, qword ptr ds:[0x142495790]                                                                      | 0000000142495790:"[FLog::LoginManager] Verified two step verification code."
-00000001403AFCCF | E8 0C1B7E01              | call    robloxstudiobeta.141B917E0                                                                           |
-00000001403AFCD4 | 48:C745 CF 00000000      | mov     qword ptr ss:[rbp - 0x31], 0x0                                                                       | [rbp-31]:__RTDynamicCast+61
-00000001403AFCDC | 48:C745 D7 0F000000      | mov     qword ptr ss:[rbp - 0x29], 0xF                                                                       |
-```
-
-In x64dbg, we follow the address `0x1432BDE78` in the memory dump. I set the value of the byte from `00` to `01`. An _alternative_ would be to do something like setting `FLogLoginManager` to `true` in `ClientSettings.json`.
