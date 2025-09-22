@@ -44,6 +44,8 @@ Note the `push 34`, whose `CURLOPT` enum integer corresponds to `0x34`, accordin
 CURLOPT_FOLLOWLOCATION = 0x34,
 ```
 
+We do not specifically need to change `CURLOPT_FOLLOWLOCATION`. The entries we need to modify are as follows:
+
 ## 0.463 RobloxPlayerBeta
 
 Two entries for `CURLOPT_SSL_VERIFYPEER`.
@@ -54,18 +56,22 @@ Both are nearby.
 
 ![alt text](image-9.png)
 
+```c
+CURLOPT_SSL_VERIFYPEER = 0x40,
+```
+
 Note how the assembly code before the references differs between each.
 
 ```x86asm
 push 0
-push 40
+push 0x40
 push dword ptr ds:[edi+148]
 call robloxplayerbeta.1540770
 ```
 
 ```x86asm
 push 1
-push 40
+push 0x40
 push dword ptr ds:[edi+148]
 call robloxplayerbeta.1540770
 ```
@@ -75,12 +81,16 @@ Arguments are put on the stack in reverse order in x86. So the `0` or `1` disabl
 ```patch
 - push 0
 + push 1
-push 40
+push 0x40
 push dword ptr ds:[edi+148]
 call robloxplayerbeta.1540770
 ```
 
 We're not done yet! Because we need to ensure that `CURLOPT_SSL_VERIFYHOST` is also set to `0`.
+
+```c
+CURLOPT_SSL_VERIFYHOST = 0x51,
+```
 
 ![alt text](image-11.png)
 
@@ -88,7 +98,7 @@ We're not done yet! Because we need to ensure that `CURLOPT_SSL_VERIFYHOST` is a
 push 1
 - push 2
 + push 0
-push 51
+push 0x51
 push dword ptr ds:[edi+148]
 call robloxplayerbeta.1540770
 add esp,C
