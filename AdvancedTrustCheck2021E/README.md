@@ -41,9 +41,9 @@ cmovne  eax, ecx
 
 2. Search for string references to `"CURLOPT_OPENSOCKETFUNCTION"`.
 
-   - You'll find _one_ result in the client or _two_ in Studio. Select the first one.
+   - You'll find _one_ result in the client or _two_ in Studio. **Select the first one**.
 
-3. Go up about 10 lines and find a statement like `mov edx, 0x4EC3`
+3. Go up about 10 lines and find a statement like `mov edx, 0x4EC3` (constant value must match).
 
 4. Shortly before the aforementioned `mov`, change the `je` statement into a `jmp`.
 
@@ -54,7 +54,7 @@ cmovne  eax, ecx
    - There will always be one result.
    - In client v463, it is at `014D12B3`.
 
-2. Go up about 6 statements to the most recent `call` routine _and follow its address_:
+2. Go up about 6 statements (skipping the unconditional `jmp`) to the most recent `call` routine _and follow its address_:
 
    - In client v463, it is at `014CED40`.
 
@@ -111,7 +111,8 @@ cmovne  eax, ecx
 
 2. Find references to the address of the `push` statement (in client v463, `00C59440`).
 
-   - There will also be one result (`je 00C59440` at `00C58E43`).
+   - In the v463 client, there will be one result (`je 00C59440` at `00C58E43`).
+   - If there is no result (as in Studio), you can completely ignore the procedure.
 
 3. Replace the `je` statement with `nop`.
 
@@ -132,7 +133,7 @@ cmovne  eax, ecx
 
 This took me over a month to complete.
 
-### Early CoreScript Analysis
+### Preliminary CoreScript Analysis
 
 The CoreScripts describe some of the behaviour shown when a _gamepass_ purchase is initiated.
 
@@ -231,7 +232,7 @@ Notice that when `game.HttpRbxApiService:GetAsyncFullUrl` is called, we get a 40
 
 But when we do `game.HttpService:GetAsync(url)`, we consistently get `HttpError: ConnectFail`. That is bad because `localhost:2005` is the address of an active running server that we're using.
 
-### Internal `RBX::HttpClient` (in x86)
+### Internal `RBX::HttpClient` class
 
 Using IDA, and looking through the v548 PDB files (which some Rōblox reverse-engineers refer to for research), I get the following function signature:
 
@@ -510,7 +511,7 @@ curl_set_opt 2777 C7D2B00 [\xC89\xAC\x01]
 
 The option `2751` (enum value `CURLoption::CURLOPT_CAINFO`) appears when using `HttpService`. When I patch the program to _not_ use `CURLOPT_CAINFO`, _nothing_ changes.
 
-But the option `4EC3` (`CURLoption::CURLOPT_OPENSOCKETFUNCTION`) exists for both **and** they differ between the two dumps.
+But the option `4EC3` (`CURLoption::CURLOPT_OPENSOCKETFUNCTION`) exists for both **and** they differ between the two dumps. We know this correspondence from [other programs which define the enums](https://github.com/ServersHub/Ark-Server-Plugins/blob/eabcf9276787889b2c0ef74b64bcd691a7821799/GamingOGs%20Plugins/gogcommandlogger-master/include/API/ARK/Enums.h#L10486):
 
 **This is what turns out to be the final culprit.**
 
