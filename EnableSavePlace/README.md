@@ -7,7 +7,14 @@ Notice that `[esi]:"https://localhost:2006/ide/publish/UploadExistingAsset?asset
 
 Corresponds here in [16src](https://github.com/Jxys3rrV/roblox-2016-source-code):
 
-![alt text](image-1.png)
+```cpp
+bool DataModel::uploadPlace(const std::string& uploadUrl, const SaveFilter saveFilter, boost::function<void()> resumeFunction, boost::function<void(std::string)> errorFunction)
+{
+        ...
+		if( !RBX::Http::isRobloxSite(uploadUrl.c_str()) )
+			return uploadPlaceReturn(false, "Url is invalid", resumeFunction, errorFunction);
+        ...
+```
 
 16src also uses [`/ide/publish/UploadExistingAsset`](https://github.com/Jxys3rrV/roblox-2016-source-code/blob/4de2dc3a380e1babe4343c49a4341ceac749eddb/App/v8datamodel/AssetService.cpp#L399). You'll only need to implement one endpoint across a lot of versions.
 
