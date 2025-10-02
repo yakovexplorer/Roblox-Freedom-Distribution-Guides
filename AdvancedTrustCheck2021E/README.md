@@ -1,6 +1,6 @@
 Prepared patches are availble, assuming that [you have ASLR disabled](https://github.com/adamhlt/ASLR-Disabler/releases).
 
-- [[RCC]](v463-rcc.1337)
+- [[RCC]](v463-server.1337)
 - [[Player]](v463-player.1337)
 
 # So We Had Gamepass Problems on 2021E...

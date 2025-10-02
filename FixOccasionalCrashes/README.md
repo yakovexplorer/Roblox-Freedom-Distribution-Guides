@@ -3,7 +3,7 @@
 As of 2025-07-07, there are two common address locations where Rōblox can crash randomly. The solution is as follows:
 
 1. In the Player's `ClientAppSettings.json`, set `DFIntAnalyticsNS1CDNProbeChancePercent` to 0, and
-2. Apply the patches from [`./v463-client.1337`](./v463-client.1337).
+2. Apply the patches from [`./v463-player.1337`](./v463-player.1337).
 
 ## Why?
 
@@ -76,4 +76,4 @@ Using [MinidumpExplorer](https://github.com/GregTheDev/MinidumpExplorer/releases
 
 They basically point to a `0xC0000005` (access-violation) error at address `00EB6C88`.
 
-The changes in [`./v463-client.1337`](./v463-client.1337) skip the function call in which `00EB6C88` resides (more information can be provided upon request).
+The changes in [`./v463-player.1337`](./v463-player.1337) skip the function call in which `00EB6C88` resides (more information can be provided upon request).

@@ -24,7 +24,7 @@ The best items contain "quick guides", along with a primer on how I reached the 
 | [Extracting Roblox Assets](./ExtractingRobloxAssets)                    | 0.7          |
 | [Bypass Video Limits](./BypassVideoLimits)                              | 1.0          |
 | [Make Asset URLs Permissive](./MakeAssetURLsPermissive)                 | 0.3          |
-| [Allow Multiple Simultaneous Clients](./AllowMultipleClients)           | 1.0          |
+| [Allow Multiple Simultaneous Clients](./AllowMultipleClients)           | 0.5          |
 | [Fix Occasional Crashes](./FixOccasionalCrashes)                        | 1.0          |
 | [Ongoing CSG Research](./OngoingCSGResearch)                            | 0.3          |
 | [Patch Materials](./PatchMaterials)                                     | 1.0          |
