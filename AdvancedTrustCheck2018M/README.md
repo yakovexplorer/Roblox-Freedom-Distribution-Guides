@@ -68,3 +68,5 @@ However, we need to find the function first. To do so, there are some strings th
 - `"/serviceloginauth"`
 
 We only need to look for user-module references to one these strings; I chose `"robloxlabs.com"`.
+
+Once I found that string, I made sure that I could find at least one other that is also in the list.

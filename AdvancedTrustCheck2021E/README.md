@@ -1,4 +1,4 @@
-Prepared patches are availble, assuming that [you have ASLR disabled](https://github.com/adamhlt/ASLR-Disabler/releases).
+Prepared patches are available, assuming that [you have ASLR disabled](https://github.com/adamhlt/ASLR-Disabler/releases).
 
 - [[RCC]](v463-server.1337)
 - [[Player]](v463-player.1337)

@@ -14,12 +14,13 @@ The best items contain "quick guides", along with a primer on how I reached the 
 
 | Guide                                                                   | Completeness |
 | ----------------------------------------------------------------------- | ------------ |
-| [Add Custom Strings in 2021E](./AddStrings2021E)                        | 0.8          |
-| [Advanced Trust Check for 2018M](./AdvancedTrustCheck2018M)             | 1.0          |
+| [Add Custom Strings in 2021E](./AddStrings2021E)                        | 1.0          |
+| [Advanced Trust Check for 2018M](./AdvancedTrustCheck2018M)             | 0.4          |
 | [Advanced Trust Check for 2021E](./AdvancedTrustCheck2021E)             | 1.0          |
 | [Give All Scripts Access To All Methods](./AllScriptsAccessAllMethods)  | 1.0          |
 | [Change Method Security Permissions](./ChangeMethodSecurityPermissions) | 1.0          |
 | [Patch DataModelPatch](./PatchDataModelPatch)                           | 0.3          |
+| [Disable Gòógle Analytricks](./DisableGoogleAnalytricks)                | 0.4          |
 | [Discriminate RCC Logs](./DiscriminateRCCLogs)                          | 0.9          |
 | [Extracting Roblox Assets](./ExtractingRobloxAssets)                    | 0.7          |
 | [Bypass Video Limits](./BypassVideoLimits)                              | 1.0          |

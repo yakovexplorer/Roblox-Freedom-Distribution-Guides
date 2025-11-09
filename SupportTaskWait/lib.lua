@@ -1,0 +1,180 @@
+function transformLib(name, funcs)
+	local result = {}
+	for k, v in next, funcs do
+		result[k] = v
+	end
+
+	local existing = getfenv(0)[name]
+	if type(existing) == "table" then
+		for k, v in next, existing do
+			result[k] = v
+		end
+	end
+	getfenv(0)[name] = result
+end
+
+function transformLibs(libTable, filter)
+	for k, v in next, libTable do
+		if not filter or k == filter then
+			transformLib(k, v)
+		end
+	end
+end
+
+-- https://github.com/jiwonz/luau-task/blob/8bd870e4ca76a558e364950b352b8d9259fde5dc/src/lib/task.luau
+-- Corresponds to the entire `task` library.
+do
+	local function wrapThread(functionOrThread)
+		if type(functionOrThread) == "thread" then
+			return functionOrThread
+		else
+			return coroutine.create(functionOrThread)
+		end
+	end
+
+	local function resumeWithErrorCheck(thread, ...: any)
+		local success, message = coroutine.resume(thread, ...)
+
+		if not success then
+			print(string.char(27) .. "[31m" .. message)
+		end
+	end
+
+	local last_tick = os.clock()
+
+	local waitingThreads = {}
+	local function processWaiting()
+		local processing = waitingThreads
+		waitingThreads = {}
+
+		for thread, data in processing do
+			if coroutine.status(thread) ~= "dead" then
+				if type(data) == "table" and last_tick >= data.resume then
+					if data.start then
+						resumeWithErrorCheck(thread, last_tick - data.start)
+					else
+						resumeWithErrorCheck(thread, table.unpack(data, 1, data.n))
+					end
+				else
+					waitingThreads[thread] = data
+				end
+			end
+		end
+	end
+
+	local deferredThreads = {}
+	local function processDeferred()
+		local i = 1
+
+		while i <= #deferredThreads do
+			local data = deferredThreads[i]
+
+			if coroutine.status(data.thread) ~= "dead" then
+				resumeWithErrorCheck(data.thread, table.unpack(data.args))
+			end
+
+			i = i + 1
+		end
+
+		table.clear(deferredThreads)
+	end
+
+	local loopStarted = false
+	function triggerTaskLoop()
+		if loopStarted then
+			return
+		end
+
+		loopStarted = true
+		game:GetService("RunService").Heartbeat:Connect(function(d)
+			last_tick = os.clock()
+
+			processWaiting()
+			processDeferred()
+		end)
+	end
+
+	function task_wait(duration)
+		local duration = duration or 0
+
+		waitingThreads[coroutine.running()] = {
+			resume = last_tick + duration,
+			start = last_tick,
+		}
+		triggerTaskLoop()
+		return coroutine.yield()
+	end
+
+	function task_delay(duration, functionOrThread, ...)
+		local thread = wrapThread(functionOrThread)
+
+		local data = table.pack(...)
+		data.resume = last_tick + duration
+		waitingThreads[thread] = data
+		triggerTaskLoop()
+
+		return thread
+	end
+
+	function task_defer(functionOrThread, ...)
+		local thread = wrapThread(functionOrThread)
+		table.insert(deferredThreads, { thread = thread, args = table.pack(...) })
+		triggerTaskLoop()
+
+		return thread
+	end
+
+	function task_spawn(functionOrThread, ...)
+		local thread = wrapThread(functionOrThread)
+		resumeWithErrorCheck(thread, ...)
+		triggerTaskLoop()
+
+		return thread
+	end
+
+	function task_cancel(thread)
+		coroutine.close(thread)
+	end
+end
+
+-- https://github.com/download4/LuaPackages/blob/main/Packages/_Index/LuauPolyfill/LuauPolyfill/Math/clz32.lua
+do
+	local rshift = bit32.rshift
+	local log = math.log
+	local floor = math.floor
+	local LN2 = math.log(2)
+
+	function bit32_countlz(x)
+		-- convert to 32 bit integer
+		local as32bit = rshift(x, 0)
+		if as32bit == 0 then
+			return 32
+		end
+		return 31 - floor(log(as32bit) / LN2)
+	end
+end
+
+-- https://github.com/playvoras/anoynymousscript/blob/main/public/bit32.byteswap.lua
+do
+	function bit32_byteswap(value)
+		local b1 = bit32.extract(value, 0, 8)
+		local b2 = bit32.extract(value, 8, 8)
+		local b3 = bit32.extract(value, 16, 8)
+		local b4 = bit32.extract(value, 24, 8)
+		return bit32.bor(bit32.lshift(b1, 24), bit32.lshift(b2, 16), bit32.lshift(b3, 8), b4)
+	end
+end
+
+return transformLibs({
+	task = {
+		spawn = task_spawn,
+		defer = task_defer,
+		delay = task_delay,
+		wait = task_wait,
+		cancel = task_cancel,
+	},
+	bit32 = {
+		countlz = bit32_countlz,
+		byteswap = bit32_byteswap,
+	},
+})
