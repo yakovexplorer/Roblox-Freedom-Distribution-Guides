@@ -45,7 +45,7 @@ The very next function call (in this case) is to `robloxplayerbeta.5B5A20`. Let'
 About 10 lines later in the function call, we get this branch:
 
 ```
-005B5A4A | 83FF 03                  | cmp edi,3                                              | `FileSystemDir.DirExe == 3`
+005B5A4A | 83FF 03                  | cmp edi,3                                              | FileSystemDir.DirExe == 3
 005B5A4D | 0F85 18010000            | jne robloxplayerbeta.5B5B6B                            |
 ```
 
