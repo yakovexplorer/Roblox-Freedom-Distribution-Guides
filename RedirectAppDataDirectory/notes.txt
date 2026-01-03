@@ -1,0 +1,45 @@
+# "dword ptr ss:[ebp-0x458]" is not relevant, so we can use it as an intermediate buffer
+# "dword ptr ss:[ebp-0x250]" is a string buffer used in SHGetFolderPathAndSubDirW branches; we redirect "subDirectory" to this address in our patches for AppData
+# "dword ptr ss:[ebp+0x14]" is "const char *subDirectory"
+# "0114AE80" is the address of the string "../"
+# "0114BF88" is the address of the string "%s%s%s"
+
+lea eax, ss:[ebp-0x458]
+lea ebx, ss:[ebp-0x250]
+xchg dword ptr ss:[ebp+0x14], ebx
+mov esi, 0114AE80
+push esi
+xor ecx, ecx # mov ecx, 3
+mov cl, 3
+rep movsb
+pop esi
+mov cl, 3
+rep movsb
+mov esi, eax
+mov cl, -1-6
+rep movsb
+
+
+push dword ptr ss:[ebp+0x14]
+mov ecx, 0114AE80
+push ecx
+push ecx
+push 0114BF88
+lea eax, ss:[ebp-0x458]
+push eax
+call sprintf
+push eax
+push dword ptr ss:[esp+4]
+lea eax, ss:[ebp-0x250]
+push eax
+mov dword ptr ss:[ebp+0x14], eax
+call mbstowcs
+
+lea eax, ss:[ebp-0x250]
+mov ebx, eax
+xchg dword ptr ss:[ebp+0x14], eax
+push 0114AE80
+push eax
+call strcpy
+push 0114AE80
+call strstr

@@ -1,6 +1,6 @@
 All `rbxasset://textures/` material things get redirected to `rbxassetid://rbxmtl-` when you apply these patches.
 
-**If you're using a client version of Rōblox that obfuscates strings in the** `**exe**` **until they're loaded (such as v463), refer** [**here**](../AddStrings2021E/README.md)**.**
+**If you're using a client version of Rōblox that obfuscates strings in the** `**exe**` **until they're loaded (such as v463), refer [here](../AddStrings2021E/README.md).**
 
 ---
 
@@ -14,8 +14,6 @@ Modify the following user-referenced strings (no substrings):
 
 All _single_ slashes, _including_ at the end of those strings, are to be replaced with `-`. For example, `"rbxasset://textures/plastic/studs.dds"` gets altered to `"rbxassetid://rbxmtl-plastic-studs.dds"`.
 
----
-
 There is still more stuff to do.
 
 To allow us to re-locate material paths such as `rbxasset://textures/woodplanks/diffuse.dds`, we'll also need to replace some instances of `/` with `-`.
@@ -23,7 +21,7 @@ To allow us to re-locate material paths such as `rbxasset://textures/woodplanks/
 1. Find a string in program memory which terminates with `"-"`. One good place to look is in the string which we modified previously: `rbxassetid://rbxmtl-`. Take the memory address of the _final_ character of that string (the dash). In client v348, this address is `01539923`.
 
 2. Search user-string results for `"diffuse"`. There will be multiple multiple results.
-   - For each result, keep navigating up until you find a `push` instruction. If the opcode is not equal to `68`, you can safely ignore.
+   - For each result, keep navigating up until you find a `push` instruction with a constant value as the argument. If the opcode is not equal to `68`, you can safely ignore.
    - Replace the address in that instruction with the one you collected from step (1). In v348, you replace `push 01129658` with `push 01539923`.
 
 For example, in client v348:
