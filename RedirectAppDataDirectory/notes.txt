@@ -43,3 +43,20 @@ push eax
 call strcpy
 push 0114AE80
 call strstr
+
+lea eax, ss:[ebp-0x458]
+push eax
+push 0x104
+push eax
+push 0
+call dword ptr ds:[GetModuleFileNameA]
+pop ebx
+lea edi, dword ptr ss:[ebx+eax*2]
+mov al, 5C # '\'
+mov ch, 0xFF
+std
+mov bl, 2
+repnz scasw
+dec bl
+jnz {TWO STATEMENTS UP}
+mov byte ptr ss:[edi+2], 0
