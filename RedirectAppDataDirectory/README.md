@@ -4,6 +4,12 @@ For example, if you use RFD then re-launch modern Rōblox, some settings will be
 
 Let's fix it.
 
+## Quick Guide
+
+1. Search in user-module string references for `"logs"`. Click any result.
+2. Navigate to the location of the next `call`.
+3. **Stay tuned for more information and how it can be used in versions other than 348.**
+
 ---
 
 ## Objective
@@ -66,7 +72,7 @@ The very next function call (in this case) is to `robloxplayerbeta.5778B0`. Let'
 
 The `DirAppData` enum has _exclusive_ code coverage in **two** areas, according to the 2016 source-code archive.
 
-#### (C1)
+#### (R1)
 
 ```cpp
 switch (dir)
@@ -105,7 +111,7 @@ Therefore, no other enum values for `dir` can reach this code segment. It should
 
 The `jmp` immediately after the highlighted region is a bridge for the _next_ available region of code to discuss. Fortunately, these two code regions are near each other.
 
-#### (C2)
+#### (R2)
 
 ```cpp
 if ((hr!=S_OK) && (dir == DirAppData))
@@ -131,7 +137,7 @@ config:
     wrappingWidth: 6767
 ---
 flowchart TB
- subgraph subGraph0["Switch-case statement per (C1)"]
+ subgraph subGraph0["Switch-case statement per (R1)"]
         3.5["ASSERT FALSE"]
         3["mov eax,1<br>jmp rccservice.577AD3"]
         2["sub eax,1<br>je rccservice.577A94"]
@@ -142,7 +148,7 @@ flowchart TB
         2.5["cmp dword ptr ss:[ebp-10],8<br>lea eax,dword ptr ss:[ebp-24]<br>lea ecx,dword ptr ss:[ebp-250]<br>cmovae eax,dword ptr ss:[ebp-24]<br>push ecx<br>push eax<br>mov eax,esi<br>or eax,E<br>jmp rccservice.577AC6"]
         C["push 0<br>push 0<br>push eax<br>push 0<br>call ebx"]
   end
- subgraph subGraph1["Backup call to CSIDL_COMMON_APPDATA per (C2)"]
+ subgraph subGraph1["Backup call to CSIDL_COMMON_APPDATA per (R2)"]
         J["or eax,1C<br>push 0<br>push 0<br>push eax<br>push 0<br>call ebx<br>test eax,eax<br>je rccservice.577B0A<br>test edi,edi<br>jne rccservice.577AF3"]
         C2["mov esi,dword ptr ss:[ebp+8]<br>lea eax,dword ptr ss:[ebp-250]<br>push eax<br>mov ecx,esi<br>call rccservice.48F430"]
         B2["test eax,eax<br>je rccservice.577B0A"]
@@ -170,6 +176,12 @@ flowchart TB
     C2 --> END
     C1 --> END
 ```
+
+Note that from (R1):
+
+- `CSIDL_LOCAL_APPDATA` corresponds with 0x1C
+- `CSIDL_MYPICTURES` corresponds with 0x27
+- `CSIDL_MYVIDEO` corresponds with 0x0E
 
 There are two registers being checked in x86: `eax` and `edi`. We know that _one_ of them corresponds with the C++ variable `dir`. It is safe to eliminate `eax` since both comparisons are made _immediately_ after a function call at `00577ACD`.
 
@@ -237,23 +249,26 @@ Therefore, I want the buffer at `ebp - 0x250` to be filled like the following:
 
 - a `wchar*` string `L"../../"` for when `subDirectory` an empty string or a null pointer.
 
-After much trial and error, I devised this clever 40-byte-long routine which does exactly that:
+After much trial and error, I devised this clever 47-byte-long routine which does exactly that:
 
-```x86
-lea edi,dword ptr ss:[ebp-250]
-mov eax,2F002E
-mov dword ptr ds:[edi+8],eax
-ror eax,10
-mov dword ptr ds:[edi+4],eax
-dec eax
-mov dword ptr ds:[edi],eax
-
-lea eax,dword ptr ds:[edi+C]
-push es
-push dword ptr ss:[ebp+14]
-push eax
-call dword ptr ds:[<mbstowcs>]
-add esp,C
+```
+00577AAE | 8DBD BCFDFFFF            | lea edi,dword ptr ss:[ebp-244]
+00577AB4 | B8 2E002F00              | mov eax,2F002E
+00577AB9 | 8947 FC                  | mov dword ptr ds:[edi-4],eax
+00577ABC | C1C8 10                  | ror eax,10
+00577ABF | 8947 F8                  | mov dword ptr ds:[edi-8],eax
+00577AC2 | 48                       | dec eax
+...
+00577AD5 | 8947 F4                  | mov dword ptr ds:[edi-C],eax
+00577AD8 | 31DB                     | xor ebx,ebx
+00577ADA | 8B45 14                  | mov eax,dword ptr ss:[ebp+14]
+00577ADD | 85C0                     | test eax,eax
+00577ADF | 0F44C7                   | cmove eax,edi
+00577AE2 | 0FB60C18                 | movzx ecx,byte ptr ds:[eax+ebx]
+00577AE6 | 6636:890C5F              | mov word ptr ss:[edi+ebx*2],cx
+00577AEB | 43                       | inc ebx
+00577AEC | 41                       | inc ecx
+00577AED | E2 F3                    | loop rccservice.577AE2
 ```
 
 All I need to do is fill the nops in with code assembled and sequenced from the instructions above.

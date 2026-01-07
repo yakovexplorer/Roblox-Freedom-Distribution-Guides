@@ -60,3 +60,21 @@ repnz scasw
 dec bl
 jnz {TWO STATEMENTS UP}
 mov byte ptr ss:[edi+2], 0
+
+
+lea edi, ss:[ebp-0x244] @ 244 == 250 - C
+mov eax, 0x2F002E
+mov dword ptr ds:[edi-0x04], eax
+ror eax, 0x10
+mov dword ptr ds:[edi-0x08], eax
+dec eax
+mov dword ptr ds:[edi-0x0C], eax
+xor ebx, ebx
+mov eax, dword ptr ss:[ebp+0x14]
+test eax, eax
+cmovz eax, edi
+movsx ecx, byte ptr ds:[eax+ebx*1]
+mov word ptr ss:[edi+ebx*2], cx
+inc ebx
+inc ecx
+loop {back 0xB bytes}
