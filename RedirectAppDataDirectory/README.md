@@ -245,30 +245,54 @@ By looking at the assembly, we find that:
 
 Therefore, I want the buffer at `ebp - 0x250` to be filled like the following:
 
-- a `wchar*` string `L"../../logs"` for when `subDirectory` is equal to narrow-character string `"logs"`.
+- a `wchar*` string `L"../../../logs"` for when `subDirectory` is equal to narrow-character string `"logs"`.
 
-- a `wchar*` string `L"../../"` for when `subDirectory` an empty string or a null pointer.
+- a `wchar*` string `L"../../../"` for when `subDirectory` an empty string or a null pointer.
 
 After much trial and error, I devised this clever 47-byte-long routine which does exactly that:
 
+```x86
+mov eax, 0x002f002e
+lea edi, [ebp - 0x250]
+push 3
+pop ecx
+l1:
+mov dword ptr [edi], eax
+mov dword ptr [edi+2], eax
+add edi, 6
+loop l1
+
+xor ebx,ebx
+mov eax,dword ptr ss:[ebp+0x14]
+test eax,eax
+cmove eax,edi
+l2:
+movzx ecx,byte ptr ds:[eax+ebx]
+mov word ptr ss:[edi+ebx*2],cx
+inc ebx
+inc ecx
+loop l2
 ```
-00577AAE | 8DBD BCFDFFFF            | lea edi,dword ptr ss:[ebp-244]
-00577AB4 | B8 2E002F00              | mov eax,2F002E
-00577AB9 | 8947 FC                  | mov dword ptr ds:[edi-4],eax
-00577ABC | C1C8 10                  | ror eax,10
-00577ABF | 8947 F8                  | mov dword ptr ds:[edi-8],eax
-00577AC2 | 48                       | dec eax
-...
-00577AD5 | 8947 F4                  | mov dword ptr ds:[edi-C],eax
-00577AD8 | 31DB                     | xor ebx,ebx
-00577ADA | 8B45 14                  | mov eax,dword ptr ss:[ebp+14]
-00577ADD | 85C0                     | test eax,eax
-00577ADF | 0F44C7                   | cmove eax,edi
-00577AE2 | 0FB60C18                 | movzx ecx,byte ptr ds:[eax+ebx]
-00577AE6 | 6636:890C5F              | mov word ptr ss:[edi+ebx*2],cx
-00577AEB | 43                       | inc ebx
-00577AEC | 41                       | inc ecx
-00577AED | E2 F3                    | loop rccservice.577AE2
+
+```
+b8 2e 00 2f 00
+8d bd b0 fd ff ff
+6a 03
+59
+89 07
+89 47 02
+83 c7 06
+e2 f6 // This `e2` loop instruction is different if you're staggering the above code block.
+
+31 db
+8b 45 14
+85 c0
+0f 44 c7
+0f b6 0c 18
+36 66 89 0c 5f
+43
+41
+e2 f3
 ```
 
 All I need to do is fill the nops in with code assembled and sequenced from the instructions above.
