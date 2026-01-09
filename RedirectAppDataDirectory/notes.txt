@@ -78,3 +78,23 @@ mov word ptr ss:[edi+ebx*2], cx
 inc ebx
 inc ecx
 loop {back 0xB bytes}
+
+-------------
+
+lea rdi,qword ptr ss:[rbp-60]
+mov eax, 0x2F002E
+push 3
+pop rcx
+mov dword ptr ds:[rdi],eax
+mov dword ptr ds:[rdi+2],eax
+add rdi,6
+loop 141B65CE9
+
+xor rbx,rbx
+test r15,r15
+cmove r15,rdi
+movzx ecx,byte ptr ds:[r15+rbx]
+mov word ptr ds:[rdi+rbx*2],cx
+inc ebx
+inc ecx
+loop 141B65D25

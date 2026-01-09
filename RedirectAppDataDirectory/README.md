@@ -7,8 +7,21 @@ Let's fix it.
 ## Quick Guide
 
 1. Search in user-module string references for `"logs"`. Click any result.
-2. Navigate to the location of the next `call`.
-3. **Stay tuned for more information and how it can be used in versions other than 348.**
+2. Navigate to the location of the next `call` through the disassembler.
+   - If you happen to see a call to `GetModuleFileNameW` somewhere in the first 30 or so instructions, you're in the right place.
+3. Keep scrolling down until you find a reference to `SHGetFolderPathAndSubDir`.
+   - In v348, it looks like `mov ebx,dword ptr ds:[<SHGetFolderPathAndSubDir>]`. This reference should only appear once in this entire function.
+   - In v463, that is a more direct `call <JMP.&SHGetFolderPathAndSubDirW>`. Here, this `call` statement appears twice, with the first coming about 10 other instructions before the second. _Pick the second one._
+4. Keep a note of a nearby statement either like `or eax,1C` or `or ebx,23`.
+   - **The constant must be `1C` or `23`**, but the specific register being used is not.
+   - It also _must_ be an `or` statement.
+   - If there are multiple, keep note of them all.
+5. Also keep a note of the offset of `ebp` for a particular string buffer whose address gets pushed into the stack.
+   - In v348, the offset is `0x264` [from `lea ecx,dword ptr ss:[ebp-250]`].
+   - In v463, the offset is `0x264` [from `lea ecx,dword ptr ss:[ebp-264]`].
+6. Surrounding the `or` statement(s) from (4), fill all their surrounding instructions with `nop`, avoiding any branches.
+
+From there, **figure the rest out yourself** using code I assembled from [Appendix A](#appendix-a). Each version of Rōblox operates completely differently - even among Player, Studio, and RCC.
 
 ---
 
@@ -109,7 +122,7 @@ Therefore, no other enum values for `dir` can reach this code segment. It should
 
 ![alt text](image-2.png)
 
-The `jmp` immediately after the highlighted region is a bridge for the _next_ available region of code to discuss. Fortunately, these two code regions are near each other.
+The unconditional `jmp` immediately after the highlighted region is a bridge for the _next_ available region of code to discuss. Fortunately, these two code regions are near each other.
 
 #### (R2)
 
@@ -177,11 +190,17 @@ flowchart TB
     C1 --> END
 ```
 
-Note that from (R1):
+Note that from (R1), these constants map into [the following hex values](https://tarma.com/support/im9/using/symbols/functions/csidls.htm):
 
-- `CSIDL_LOCAL_APPDATA` corresponds with 0x1C
-- `CSIDL_MYPICTURES` corresponds with 0x27
-- `CSIDL_MYVIDEO` corresponds with 0x0E
+- `CSIDL_LOCAL_APPDATA` corresponds with 0x1C.
+- `CSIDL_MYPICTURES` corresponds with 0x27.
+- `CSIDL_MYVIDEO` corresponds with 0x0E.
+
+In the v348 compilation, these constants can be found being taken a bitwise-or with statements such as `or eax,1C`, `or eax,27`, et c.
+
+I also found an `or ebx,23` statement when looking through the compiled code in v463. Therefore, we should add:
+
+- `CSIDL_COMMON_APPDATA` corresponds with 0x23.
 
 There are two registers being checked in x86: `eax` and `edi`. We know that _one_ of them corresponds with the C++ variable `dir`. It is safe to eliminate `eax` since both comparisons are made _immediately_ after a function call at `00577ACD`.
 
@@ -249,11 +268,17 @@ Therefore, I want the buffer at `ebp - 0x250` to be filled like the following:
 
 - a `wchar*` string `L"../../../"` for when `subDirectory` an empty string or a null pointer.
 
-After much trial and error, I devised this clever 47-byte-long routine which does exactly that:
+After much trial and error, I devised this clever 47-byte-long routine in [Appendix A](#appendix-a).
+
+All I need to do is fill the nops in with code assembled and sequenced from the instructions above.
+
+Credit to `ebkeyesa` and `ayoeggz` on Twitch for nothing.
+
+### Appendix A
 
 ```x86
 mov eax, 0x002f002e
-lea edi, [ebp - 0x250]
+lea edi, [ebp - 0x250] // 0x250 may need to be replaced by 0x264.
 push 3
 pop ecx
 l1:
@@ -282,7 +307,9 @@ b8 2e 00 2f 00
 89 07
 89 47 02
 83 c7 06
-e2 f6 // This `e2` loop instruction is different if you're staggering the above code block.
+e2 f6
+// This `e2` loop instruction is different if you're splitting the above code block into multiple pieces.
+// Make sure the destination is at the first `mov` instruction (`89 07`).
 
 31 db
 8b 45 14
@@ -294,5 +321,3 @@ e2 f6 // This `e2` loop instruction is different if you're staggering the above 
 41
 e2 f3
 ```
-
-All I need to do is fill the nops in with code assembled and sequenced from the instructions above.
