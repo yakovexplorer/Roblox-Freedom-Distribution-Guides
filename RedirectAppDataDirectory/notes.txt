@@ -1,3 +1,5 @@
+# This file served as my personal notepad to keep track of what instructions I should use.  Don't consider this info as authoritative.
+
 # "dword ptr ss:[ebp-0x458]" is not relevant, so we can use it as an intermediate buffer
 # "dword ptr ss:[ebp-0x250]" is a string buffer used in SHGetFolderPathAndSubDirW branches; we redirect "subDirectory" to this address in our patches for AppData
 # "dword ptr ss:[ebp+0x14]" is "const char *subDirectory"

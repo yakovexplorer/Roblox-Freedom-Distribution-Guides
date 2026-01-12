@@ -276,6 +276,8 @@ Credit to `ebkeyesa` and `ayoeggz` on Twitch for nothing.
 
 ### Appendix A
 
+For 32-bit installations, utilise these instructions:
+
 ```x86
 mov eax, 0x002f002e
 lea edi, [ebp - 0x250] // 0x250 may need to be replaced by 0x264.
@@ -290,9 +292,10 @@ loop l1
 xor ebx,ebx
 mov eax,dword ptr ss:[ebp+0x14]
 test eax,eax
-cmove eax,edi
+je l3
 l2:
-movzx ecx,byte ptr ds:[eax+ebx]
+mov cl,byte ptr ds:[eax+ebx]
+l3:
 mov word ptr ss:[edi+ebx*2],cx
 inc ebx
 inc ecx
@@ -301,7 +304,7 @@ loop l2
 
 ```
 b8 2e 00 2f 00
-8d bd b0 fd ff ff
+8d bd b0 fd ff ff // The hex bytes in this instruction may change depending on our `ebp` offset [0x250 or 0x264]
 6a 03
 59
 89 07
@@ -314,10 +317,33 @@ e2 f6
 31 db
 8b 45 14
 85 c0
-0f 44 c7
-0f b6 0c 18
+74 03
+8a 0c 18
 36 66 89 0c 5f
 43
 41
-e2 f3
+e2 f4
+```
+
+For 64-bit installations, utilise these instructions:
+
+```
+lea rdi,qword ptr ss:[rbp-60]
+mov eax, 0x2F002E
+push 3
+pop rcx
+l1:
+mov dword ptr ds:[rdi],eax
+mov dword ptr ds:[rdi+2],eax
+add rdi,6
+loop l1
+
+xor rbx,rbx
+test r15,r15
+cmove r15,rdi
+movzx ecx,byte ptr ds:[r15+rbx]
+mov word ptr ds:[rdi+rbx*2],cx
+inc ebx
+inc ecx
+loop 141B65D25
 ```
