@@ -7,25 +7,44 @@ Let's fix it.
 ## Quick Guide
 
 1. Search in user-module string references for `"logs"`. Click any result.
+
 2. Navigate to the location of the next `call` through the disassembler.
+
    - If you happen to see a call to `GetModuleFileNameW` somewhere in the first 30 or so instructions, you're in the right place.
+
 3. Keep scrolling down until you find a reference to `SHGetFolderPathAndSubDir`.
+
    - In v348, it looks like `mov ebx,dword ptr ds:[<SHGetFolderPathAndSubDir>]`. This reference should only appear once in this entire function.
-   - In v463, that is a more direct `call <JMP.&SHGetFolderPathAndSubDirW>`. Here, this `call` statement appears twice, with the first coming about 10 other instructions before the second. _Pick the second one._
-4. Keep a note of a nearby statement either like `or eax,1C` or `or ebx,23`.
+   - In v463, that instead is `call <JMP.&SHGetFolderPathAndSubDirW>`. Here, this `call` statement appears twice, with the first being about 10 instructions before the second. _Pick the second one_.
+
+4. Searching about 20 lines in either direction, keep a note of nearby statement(s) either like `or eax,1C` or `or ebx,23`.
+
    - **The constant must be `1C` or `23`**, but the specific register being used is not.
-   - It also _must_ be an `or` statement.
+   - The statement also _must_ be an `or` statement.
    - If there are multiple, keep note of them all.
+
 5. Also keep a note of the offset of `ebp` for a particular string buffer whose address gets pushed into the stack.
+
    - In v348, the offset is `0x264` [from `lea ecx,dword ptr ss:[ebp-250]`].
    - In v463, the offset is `0x264` [from `lea ecx,dword ptr ss:[ebp-264]`].
-6. Surrounding the `or` statement(s) from (4), fill all their surrounding instructions with `nop`, avoiding any branches.
 
-From there, **figure the rest out yourself** using code I assembled from [Appendix A](#appendix-a). Each version of Rōblox operates completely differently - even among Player, Studio, and RCC.
+6. Surrounding the `or` statement(s) from step (4), fill all their surrounding instructions with `nop`.
+
+   - If there are multiple from step (4), apply the same procedure each of these times.
+   - Going up, keep noping until you find a statement like `jmp`, `jne`, `je`, etc.
+   - Going down, keep noping until you find a line that _receives_ a branch.
+
+7. If step (6) yields multiple regions, bridge them with unconditional `jmp`.
+
+   - For example, let's say that the final byte at one region has an address of `001B5C35`, and the first byte of the next region is `001B5C43`. Since the ranges are near each other, and short jumps take up two bytes, we occupy the last two bytes of the region (`001B5C34` thru `001B5C35`) with `jmp 001B5C43`.
+
+8. From there, insert the x86 instructions that I wrote in [Appendix A](#appendix-a). Each version of Rōblox operates completely differently. Even binaries of the same numbered version of Player, Studio, and RCC may differ.
+
+This is by no means a complete guide. A lot of details are up to interpretation and require further testing.
 
 ---
 
-## Objective
+## Redirecting _Local_ AppData
 
 Look at this method [in the 2016 source](https://github.com/Jxys3rrV/roblox-2016-source-code/blob/4de2dc3a380e1babe4343c49a4341ceac749eddb/App/util/Win/FileSystem.cpp#L27C1-L27C99):
 
@@ -59,7 +78,7 @@ boost::filesystem::path path = RBX::FileSystem::getUserDirectory(true, RBX::DirA
 
 Notice here the interesting string `"logs"`.
 
-## Using x32dbg
+### Finding `getUserDirectory`
 
 Let's open up x32dbg using the 2018E (v348) `RCCService.exe`.
 
@@ -273,6 +292,73 @@ After much trial and error, I devised this clever 47-byte-long routine in [Appen
 All I need to do is fill the nops in with code assembled and sequenced from the instructions above.
 
 Credit to `ebkeyesa` and `ayoeggz` on Twitch for nothing.
+
+### Additional Considerations
+
+In Studio (and only in Studio), there is a string `"/AppData/Local/Roblox"` included in compilation, as per [the 2016 source code](https://github.com/Jxys3rrV/roblox-2016-source-code/blob/4de2dc3a380e1babe4343c49a4341ceac749eddb/RobloxStudio/RobloxSettings.cpp#L81).
+
+In my view, this is bad practice since the code reduplicates functionality of `getUserDirectory` to retrieve the path to `AppData/Local/Roblox`.
+
+```cpp
+AppSettings::AppSettings()
+{
+
+  ...
+
+
+#ifdef _WIN32
+	m_tempLocation = QDir::homePath() + "/AppData/Local/Roblox";
+#else
+	m_tempLocation = QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation) + "/Roblox";
+#endif
+	if(!QFile::exists(m_tempLocation))
+		QDir().mkpath(m_tempLocation);
+}
+```
+
+This roughly corresponds with the following assembly code:
+
+```
+00725EC0 | 8D45 D8               | lea eax,dword ptr ss:[ebp-28]                                                             |
+00725EC3 | 50                    | push eax                                                                                  |
+00725EC4 | FF15 EC3B4301         | call dword ptr ds:[<public: static class QString __cdecl QDir::homePath(void)>]           |
+00725ECA | 68 EC787F01           | push robloxstudiobeta.17F78EC                                                             | 17F78EC:"/AppData/Local/Roblox"
+00725ECF | 50                    | push eax                                                                                  |
+00725ED0 | 8D45 D4               | lea eax,dword ptr ss:[ebp-2C]                                                             |
+00725ED3 | C645 FC 23            | mov byte ptr ss:[ebp-4],23                                                                |
+00725ED7 | 50                    | push eax                                                                                  |
+00725ED8 | E8 736FD8FF           | call robloxstudiobeta.4ACE50                                                              |
+```
+
+It seems that `robloxstudiobeta.4ACE50` is responsible for concatenating the result of `QDir::homePath` and `"/AppData/Local/Roblox"`. The result is then stored in a C++ class-variable named `m_tempLocation`.
+
+Unlike in `getUserDirectory`, the types being utilised are `QString` rather than `boost::filesystem::path`. And I don't want to change types to avoid also needing to mess with destructors. So I can't directly call `getUserDirectory` to get the path I want.
+
+For this, I wouldn't mind having `AppSettings` resolve to a temporary path in the same directory as `RobloxStudioBeta.exe`, rather than go up some levels like I previously discussed in `getUserDirectory`. It wouldn't matter since I don't see any files being made with the path retrieved from `m_tempLocation` under normal Studio usage anyways.
+
+Here are the changes I did:
+
+- Zeroed the entire `"/AppData/Local/Roblox"` string beginning at `17F78EC`, and
+- Changed `QDir::homePath(void)` to `QCoreApplication::applicationDirPath(void)` by subtracting `0x8` from the `ds:` address.
+
+To make sure of the `0x8` offset - that you have the right address for `QCoreApplication::applicationDirPath(void)`, consult the _Symbols_ tab and search in the `robloxstudiobeta.exe` module for imports of `applicationDirPath`.
+
+![alt text](image-5.png)
+
+```patch
+00725EC0 | 8D45 D8               | lea eax,dword ptr ss:[ebp-28]
+00725EC3 | 50                    | push eax
+-00725EC4 | FF15 EC3B4301         | call dword ptr ds:[<public: static class QString __cdecl QDir::homePath(void)>]
++00725EC4 | FF15 E43B4301         | call dword ptr ds:[<public: static class QString __cdecl QCoreApplication::applicationDirPath
+```
+
+```patch
+017F78DC  65 64 00 00 43 72 61 73 68 4D 65 6E 75 00 00 00  ed..CrashMenu...
+-017F78EC  2F 41 70 70 44 61 74 61 2F 4C 6F 63 61 6C 2F 52  /AppData/Local/R
+-017F78FC  6F 62 6C 6F 78 00 00 00 77 77 77 2E 00 00 00 00  oblox...www.....
++017F78EC  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
++017F78FC  00 00 00 00 00 00 00 00 77 77 77 2E 00 00 00 00  ........www.....
+```
 
 ### Appendix A
 
