@@ -1,20 +1,23 @@
 Look [here](https://github.com/rbxcdn/RBXGuides/blob/725e38c6a054f7e64c04c26492fe9a1a3987d40e/2020%2B%20Insane%20Guides/SSL.txt):
 
 > [ ⚠️ This asset is provided by https://github.com/rbxcdn ]
+>
 > patch ssl by jmping CURLOPT_SSL_VERIFYPEER
 
-The instructions above are unclear and fail when followed.
+---
+
+I tried the instructions above. They were unclear and failed when I followed through.
 
 What does this mean?
 
-This is practically:
+This procedure is supposed to allow your Rōblox clients to access unsigned HTTPS sites _without_ needing to create a custom cert file in `./ssl/cacert.pem`.
+
+In other words, the included `libcurl` internal stuff will make this change:
 
 ```patch
 - curl https://setup.roblox.com
 + curl https://setup.roblox.com --insecure
 ```
-
-In other words, this procedure is supposed to allow your Rōblox clients to access unsigned HTTPS sites without needing to create a custom file in `./ssl/cacert.pem`.
 
 This practice is not recommended for most uses. However, RFD's current implementation requires it.
 
@@ -50,10 +53,10 @@ Which corresponds, in the compiled RobloxPlayerBeta v463, to:
 push 0
 push 34
 push dword ptr ds:[edi+148]
-call robloxplayerbeta.1540770
+call robloxplayerbeta.1540770 // 1540770:curl_easy_setopt
 add esp,C
 push eax
-push robloxplayerbeta.21AA128 # 21AA128:"CURLOPT_FOLLOWLOCATION"
+push robloxplayerbeta.21AA128 // 21AA128:"CURLOPT_FOLLOWLOCATION"
 ```
 
 Note the `push 34`, whose `CURLOPT` enum integer corresponds to `0x34`, according to [other programs which define the enums](https://github.com/ServersHub/Ark-Server-Plugins/blob/eabcf9276787889b2c0ef74b64bcd691a7821799/GamingOGs%20Plugins/gogcommandlogger-master/include/API/ARK/Enums.h#L10486):
