@@ -65,7 +65,12 @@ Note the `push 34`, whose `CURLOPT` enum integer corresponds to `0x34`, accordin
 CURLOPT_FOLLOWLOCATION = 0x34,
 ```
 
-We do not specifically need to change `CURLOPT_FOLLOWLOCATION`. The entries we need to modify are as follows:
+We do not specifically need to change `CURLOPT_FOLLOWLOCATION`. I just use it as an example since its name is present in the 2016 source code.
+
+But rather, I am interested in
+
+- `CURLOPT_SSL_VERIFYPEER` to be set to 0, and
+- `CURLOPT_SSL_VERIFYHOST` to be set to 0 (only if explicitly provided).
 
 ## 0.463 RobloxPlayerBeta
 
@@ -107,7 +112,7 @@ push dword ptr ds:[edi+148]
 call robloxplayerbeta.1540770
 ```
 
-We're not done yet! Because we need to ensure that `CURLOPT_SSL_VERIFYHOST` is also set to `0`. Note that unlike the previous cURL option, we have to replace `2`, instead of than `1`.
+We're not done yet! Because we need to ensure that `CURLOPT_SSL_VERIFYHOST` is also set to `0`. Note that unlike the previous cURL option, the value that we need to replace from is `2`, instead of `1`.
 
 ```c
 CURLOPT_SSL_VERIFYHOST = 0x51,

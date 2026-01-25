@@ -416,7 +416,9 @@ Where `requestType` is a property of `RBX::HttpRequest::RequestConfig`.
 
 ---
 
-Setting `req->config.totalResponseWithRetriesTimeoutMillis` to `-1` (via `ss:[ptr(ebp+a4)+a4-150+14C]=-1`) gives us an **important** clue. In that case, the RCC output then becomes a loop of:
+Setting `req->config.totalResponseWithRetriesTimeoutMillis` to `-1` (via `ss:[ptr(ebp+a4)+a4-150+14C]=-1`) gives us an **important** clue.
+
+In that case, _both requests now throw a new type of error_. The RCC output becomes a loop of:
 
 ```
 testing https://localhost:2005/test_http false
@@ -426,13 +428,45 @@ false HTTP unknown error (HttpError: Unknown, msg: HttpRequestCurl(0AD8D508) cur
 ...
 ```
 
-Note that this same error occurs with both `game.HttpRbxApiService:GetAsyncFullUrl(url)` and `game.HttpService:GetAsync(url)`.
+Note that this _same_ error occurs with both `game.HttpRbxApiService:GetAsyncFullUrl(url)` and `game.HttpService:GetAsync(url)`.
+
+Also note **the mention of a name that leads me to the solution**: `libcurl`.
 
 ---
 
 ### Interactions with `libcurl`
 
-So the culprit _must_ be in how `libcurl` handles requests.
+The culprit _must_ be in how `libcurl` handles requests.
+
+The way `libcurl` typically works is by instantiating an object and modifying properties using `libcurl`'s own `curl_easy_setopt` function.
+
+How would we find `curl_easy_setopt`?
+
+The actual function which sets the `CURLOPT` isn't in the function call _below_ the string references, but instead above. That's because cURL options are actually defined as enum integers.
+
+For example, in [the 2016 source code](https://github.com/Jxys3rrV/roblox-2016-source-code/blob/4de2dc3a380e1babe4343c49a4341ceac749eddb/App/util/Shared/HttpPlatformImpl.cpp#L641):
+
+```cpp
+logCurlError("CURLOPT_FOLLOWLOCATION", curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1));
+```
+
+Which corresponds, in the compiled RobloxPlayerBeta v463, to:
+
+```x86asm
+push 0
+push 34
+push dword ptr ds:[edi+148]
+call robloxplayerbeta.1540770 // 1540770:curl_easy_setopt
+add esp,C
+push eax
+push robloxplayerbeta.21AA128 // 21AA128:"CURLOPT_FOLLOWLOCATION"
+```
+
+Note the `push 34`, whose `CURLOPT` enum integer corresponds to `0x34`, according to [other programs which define the enums](https://github.com/ServersHub/Ark-Server-Plugins/blob/eabcf9276787889b2c0ef74b64bcd691a7821799/GamingOGs%20Plugins/gogcommandlogger-master/include/API/ARK/Enums.h#L10486):
+
+```c
+CURLOPT_FOLLOWLOCATION = 0x34,
+```
 
 I added a logpoint to the head of what I think is `curl_easy_setopt`:
 
@@ -513,7 +547,7 @@ The option `2751` (enum value `CURLoption::CURLOPT_CAINFO`) appears when using `
 
 But the option `4EC3` (`CURLoption::CURLOPT_OPENSOCKETFUNCTION`) exists for both **and** they differ between the two dumps. We know this correspondence from [other programs which define the enums](https://github.com/ServersHub/Ark-Server-Plugins/blob/eabcf9276787889b2c0ef74b64bcd691a7821799/GamingOGs%20Plugins/gogcommandlogger-master/include/API/ARK/Enums.h#L10486):
 
-**This is what turns out to be the final culprit.**
+**Yes! This is what turns out to be the final culprit.**
 
 ### Not Excluding Rōblox-session Cookies
 
