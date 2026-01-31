@@ -15,6 +15,7 @@ The best items contain "quick guides", along with a primer on how I reached the 
 | Guide                                                                   | Completeness |
 | ----------------------------------------------------------------------- | ------------ |
 | [Add Custom Strings in 2021E](./AddStrings2021E)                        | 1.0          |
+| [Force RCCService FFlags to load](./RCCServiceFFlagsFetchPatch)         | 0.9          |
 | [Advanced Trust Check for 2018M](./AdvancedTrustCheck2018M)             | 0.4          |
 | [Advanced Trust Check for 2021E](./AdvancedTrustCheck2021E)             | 1.0          |
 | [Give All Scripts Access To All Methods](./AllScriptsAccessAllMethods)  | 1.0          |
