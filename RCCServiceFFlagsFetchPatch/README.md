@@ -1,9 +1,23 @@
-# Force 2017- RCCServices to fetch FFlags
+***Note:** This guide is not intended for Rōblox Freedom Distribution; it targets versions significantly older than 0.347 (released in July 2018).*
 
-For some reason, Roblox decided that the "RCCService" FFlags should be only fetched when a Settings Key is present in the registry. We should make it fetch FFlags no matter what. This guide is useful for launchers, and maybe some revivals. This guide is useless for 2018+ RCCServices, as they already fetch FFlags no matter what. We need a 2017- RCCService today.
+We've included the guide anyways for anyone who may need it.
 
-# Steps
-## 1. Search for "Read settings key: %s" in string references
+Credit to *SomeoneInTheWorld* for being the original author (@yakovexplorer on GitHub).
+
+# Force ~2017 RCCService to Fetch FFlags
+
+For some reason, Roblox decided that the "RCCService" FFlags should be only fetched when a particular key is present in the registry. We should make it fetch FFlags no matter what.
+
+This guide is useful for launchers, and maybe some revivals. This guide is useless for 2018+ RCCServices, as they already fetch FFlags no matter what.
+
+## Patching Guide
+
+A sample patch for is avaliable [here](rccservice.1337).
+
+### (1) Searching
+
+Search for `"Read settings key: %s"` in user-module string references
+
 Open x32dbg with your RCCService executable. Then click on "Symbols".
 
 ![Symbols image](x32dbg_NK5YxAOPM2.png)
@@ -19,7 +33,8 @@ Then you will be in the "References" tab. Wait until the progress bar at the bot
 
 Double click on the reference found.
 
-## 2. Assembly
+### (2) Assembly
+
 The hardest part. You might see a lot of instructions like these now:
 
 ![Assembly](x32dbg_v16iR1YUwO.png)
@@ -49,12 +64,32 @@ Select it, press space, change `0x00` to `edi` like the image below and press OK
 
 ![edit](x32dbg_GQvDhqF59z.png)
 
-You are done now. Press the band aid icon in the topbar,
+You are done now. Press the band-aid icon in the topbar:
 
 ![band aid](x32dbg_V6EPARt4wV.png)
 
-click "Patch" and save the executable.
+Click "Patch", and save the executable.
 
-# Patch export is avaliable [here](rccservice.1337).
+## Background
 
-Guide made by SomeoneInTheWorld (@yakovexplorer on Github).
+This patch was derived from [the following code](https://github.com/Jxys3rrV/roblox-2016-source-code/blob/4de2dc3a380e1babe4343c49a4341ceac749eddb/RCCService/RCCServiceSoapServiceImpl.cpp#L1388C1-L1405C3) in the 2016 source:
+```cpp
+if (settingsKey.length() == 0)
+{
+  CRegKey key;
+  if (SUCCEEDED(key.Open(HKEY_LOCAL_MACHINE, "Software\\ROBLOX Corporation\\Roblox\\", KEY_READ))) 
+  {
+    CHAR keyData[MAX_PATH];
+    ULONG bufLen = MAX_PATH-1;
+    if (SUCCEEDED(key.QueryStringValue("SettingsKey", keyData, &bufLen))) 
+    {
+      keyData[bufLen] = 0;
+      settingsKey = std::string(keyData);
+      FASTLOGS(FLog::RCCServiceInit, "Read settings key: %s", settingsKey);
+    }
+  }
+  
+  if (settingsKey.length() != 0)
+    settingsKey = "RCCService" + settingsKey;
+}
+```
