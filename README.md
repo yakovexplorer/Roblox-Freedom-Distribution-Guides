@@ -10,12 +10,12 @@ Though, the guides _don't yet_ allow you to reproduce _all_ the patches I made t
 
 Listed below are the directories in is repository, along with roughly how well they achieve their stated purpose.
 
-The best items contain "quick guides", along with a primer on how I reached the result.
+The best items contain "quick guides", along with a primer on how we reached our conclusions.
 
 | Guide                                                                   | Completeness |
 | ----------------------------------------------------------------------- | ------------ |
 | [Add Custom Strings in 2021E](./AddStrings2021E)                        | 1.0          |
-| [Force RCCService FFlags to load](./RCCServiceFFlagsFetchPatch)         | 1.0          |
+| [Force RCCService FFlags to Load](./RCCServiceFFlagsFetchPatch)         | 1.0          |
 | [Advanced Trust Check for 2018M](./AdvancedTrustCheck2018M)             | 0.4          |
 | [Advanced Trust Check for 2021E](./AdvancedTrustCheck2021E)             | 1.0          |
 | [Give All Scripts Access To All Methods](./AllScriptsAccessAllMethods)  | 1.0          |
