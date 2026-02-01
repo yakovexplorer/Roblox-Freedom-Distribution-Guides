@@ -12,7 +12,7 @@ This guide is useful for launchers, and maybe some revivals. This guide is usele
 
 ## Patching Guide
 
-A sample patch for is avaliable [here](rccservice.1337).
+A sample patch for is avaliable [here](v227-server.1337) for `RCCService.exe` v227 (early 2016).
 
 ### (1) Searching
 
@@ -93,3 +93,4 @@ if (settingsKey.length() == 0)
     settingsKey = "RCCService" + settingsKey;
 }
 ```
+
